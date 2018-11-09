@@ -10,44 +10,63 @@ var spotify = new Spotify({
     secret: "8b6801a7ed2742a3b08ada7ae8a7ede4"
 });
 
-function doThis(input1, input2) {
-    console.log(input1, input2)
+async function doThis(input1, input2) {
+    var output;
     if (input1 === "concert-this") {
-        concertQuery(input2);
+        output = await concertQuery(input2);
     } else if (input1 === "spotify-this-song") {
-        songQuery(input2);
+        output = await songQuery(input2);
     } else if (input1 === "movie-this") {
-        movieQuery(input2);
+        output = await movieQuery(input2);
     } else if (input1 === "do-what-it-says") {
         fs.readFile("random.txt", "utf8", function (error, data) {
 
             if (error) {
                 return console.log(error);
             }
-    
+
             var parsed = data.split(",");
             doThis(parsed[0], parsed[1]);
         });
     } else {
         return console.log("Please submit valid inputs.");
+    };
+
+    if (input1 !== "do-what-it-says") {
+        console.log(output);
+        // console.log(typeof(output))  
+        fs.appendFile("log.txt", output, function (error) {
+            if (error) {
+                return console.log(error);
+            } else {
+                console.log("Output being logged into log.txt...");
+            }
+        })
     }
 }
 
 function concertQuery(concert) {
-    var queryURL = "https://rest.bandsintown.com/artists/" + concert + "/events?app_id=codingbootcamp";
-    request(queryURL, function (error, response, body) {
+    var info;
 
-        if (!error & response.statusCode === 200) {
-            var result = JSON.parse(body);
+    return new Promise(function (resolve, reject) {
+        var queryURL = "https://rest.bandsintown.com/artists/" + concert + "/events?app_id=codingbootcamp";
+        request(queryURL, function (error, response, body) {
 
-            for (i = 0; i < result.length; i++) {
-                console.log("-----------------------------------------------------------");
-                console.log("Venue name and location:", result[i].venue);
-                console.log("Date: " + moment(result[i].datetime).format('MM-DD-YYYY'));
+            if (!error & response.statusCode === 200) {
+                var result = JSON.parse(body);
+                for (i = 0; i < result.length; i++) {
+                    console.log("-----------------------------------------------------------");
+                    console.log("Venue name and location:", result[i].venue);
+                    console.log("Date: " + moment(result[i].datetime).format('MM-DD-YYYY'));
+
+                    info = ["Venue name and location:" + JSON.stringify(result[i].venue),
+                    "Date: " + moment(result[i].datetime).format('MM-DD-YYYY')].join(",");
+                }
+                resolve(info);
+            } else {
+                reject(console.log(error));
             }
-        } else {
-            return console.log(error);
-        }
+        })
     })
 }
 
@@ -66,6 +85,7 @@ function songQuery(song) {
             "Link: " + album.external_urls.spotify, "Album: " + album.album.name].join("\n");
             console.log("-----------------------------------------------------------");
             console.log(info);
+            return info;
         })
         .catch(function (err) {
             return console.log(err);
@@ -84,11 +104,11 @@ function movieQuery(movie) {
             "Plot: " + parsed.Plot, "Actors: " + parsed.Actors].join("\n");
             console.log("----------------------------------------------------------------------------");
             console.log(info);
-
+            return info;
         } else {
             return console.log(error);
-        }
+        };
     });
-}
+};
 
 doThis(process.argv[2], process.argv[3]);
